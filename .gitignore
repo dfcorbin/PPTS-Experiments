@@ -1,0 +1,5 @@
+Manifest.toml
+/.vscode
+/Results
+/Data
+/.JuliaFormatter.toml
