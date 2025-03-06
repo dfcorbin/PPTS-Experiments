@@ -65,7 +65,8 @@ function lasso_poly_model(
     penalty::Float64 = 0.01,
     intercept_penalty::Float64 = penalty,
     prior_shape::Float64 = 0.01,
-    prior_scale::Float64 = 0.01
+    prior_scale::Float64 = 0.01,
+    lasso_cv::Bool=false
 )
     @argcheck size(inputs, 2) >= 2
     @argcheck degree >= 0
@@ -80,7 +81,21 @@ function lasso_poly_model(
         error(mssg)
     end
 
-    if num_bfuns == 1
+    if lasso_cv
+        # Lambda is chosen using cross validation over a maximum of 5 folds, each
+        # fold containing a minimum of 30 observations.
+        basis = basis[2:end] # Temporarily remove the intercept.
+        features = legendre_expansion(inputs, basis, space)
+        sparse_coefs = @suppress GLMNet.coef(glmnetcv(
+            features',
+            targets;
+            standardize = true,
+            intercept = true,
+            nfolds=min(5, div(length(targets), 30))
+        ))
+        basis = basis[sparse_coefs.!=0] # Extract sparse basis.
+        pushfirst!(basis, MVIndex(Int64[], Int64[])) # Re-introduce intercept.
+    elseif num_bfuns == 1
         basis = basis[1:1] # Always include intercept.
     elseif length(basis) > num_bfuns
         basis = basis[2:end] # Temporarily remove the intercept.
@@ -146,7 +161,8 @@ function choose_subregion_split!(
     prior_shape::Float64,
     prior_scale::Float64,
     penalty::Float64,
-    full_vol::Float64
+    full_vol::Float64,
+    lasso_cv::Bool=false
 )
     num_dims = size(inputs, 1)
     space = models[key].space
@@ -183,7 +199,8 @@ function choose_subregion_split!(
                     penalty = penalty * full_vol / volume(left_space),
                     intercept_penalty = penalty,
                     prior_shape = prior_shape,
-                    prior_scale = prior_scale
+                    prior_scale = prior_scale,
+                    lasso_cv=lasso_cv
                 )
                 model_cache[key][2, dim, rdeg+1] = lasso_poly_model(
                     right_inputs,
@@ -194,7 +211,8 @@ function choose_subregion_split!(
                     penalty = penalty * full_vol / volume(right_space),
                     intercept_penalty = penalty,
                     prior_scale = prior_shape,
-                    prior_shape = prior_scale
+                    prior_shape = prior_scale,
+                    lasso_cv=lasso_cv
                 )
             end
 
@@ -245,7 +263,8 @@ function choose_partitioned_basis(
     min_data_ratio::Float64 = 1.0,
     prior_shape::Float64 = 0.01,
     prior_scale::Float64 = 0.01,
-    penalty::Float64 = 0.01
+    penalty::Float64 = 0.01,
+    lasso_cv::Bool = false
 )
     @argcheck size(inputs, 2) == length(targets)
     @argcheck length(targets) >= min_data_hard
@@ -276,7 +295,8 @@ function choose_partitioned_basis(
             space;
             prior_shape = prior_shape,
             prior_scale = prior_scale,
-            penalty = penalty
+            penalty = penalty,
+            lasso_cv=lasso_cv
         )
         tmp_evidence = combined_evidence([m])
         if tmp_evidence > evidence

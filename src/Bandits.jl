@@ -8,7 +8,8 @@ using Random: randperm
 using ArgCheck: @argcheck
 using Suppressor: @suppress
 using SpecialFunctions: loggamma
-using GLMNet: glmnet
+using GLMNet: glmnet, glmnetcv
+import GLMNet
 
 export gaussian_data
 include("utils.jl")

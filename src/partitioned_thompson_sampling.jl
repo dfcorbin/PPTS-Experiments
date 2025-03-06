@@ -29,6 +29,7 @@ mutable struct PartitionedPolyTS <: Policy
     penalty::Float64
     prior_shape::Float64
     prior_scale::Float64
+    lasso_cv::Bool
 end
 
 function PartitionedPolyTS(
@@ -44,7 +45,8 @@ function PartitionedPolyTS(
     min_data_ratio::Float64 = 1.0,
     penalty::Float64 = 0.01,
     prior_shape::Float64 = 0.01,
-    prior_scale::Float64 = 0.01
+    prior_scale::Float64 = 0.01,
+    lasso_cv::Bool = false
 )
     space = HyperRectangle(num_dims; lower = 0.0, upper = 0.0)
     space_cache = deepcopy(space)
@@ -69,7 +71,8 @@ function PartitionedPolyTS(
         min_data_ratio,
         penalty,
         prior_shape,
-        prior_scale
+        prior_scale,
+        lasso_cv
     )
 end
 
@@ -134,7 +137,8 @@ function update!(
                 min_data_ratio = pol.min_data_ratio,
                 penalty = pol.penalty,
                 prior_shape = pol.prior_shape,
-                prior_scale = pol.prior_scale
+                prior_scale = pol.prior_scale,
+                lasso_cv = pol.lasso_cv
             )
         end
     else
