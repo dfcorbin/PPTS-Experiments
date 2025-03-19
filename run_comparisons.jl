@@ -132,15 +132,30 @@ num_dims = get_num_dims(getfield(Main, Symbol("sample_$(env_name)_env"))())
 num_acts = get_num_acts(getfield(Main, Symbol("sample_$(env_name)_env"))())
 policies = Dict()
 policies["random"] = RandomPolicy(num_acts)
-policies["neighbor_ucb"] = NeighborUCB(
-    num_dims,
-    num_acts,
-    initial_steps,
-    retrain_steps;
-    theta = 1.0,
-    varphi = 1.0
-)
-policies["partitioned_poly_thompson"] = PartitionedPolyTS(
+# policies["neighbor_ucb"] = NeighborUCB(
+#     num_dims,
+#     num_acts,
+#     initial_steps,
+#     retrain_steps;
+#     theta = 1.0,
+#     varphi = 1.0
+# )
+# policies["partitioned_poly_thompson"] = PartitionedPolyTS(
+#     num_dims,
+#     num_acts,
+#     initial_steps,
+#     retrain_steps;
+#     inflation = inflation,
+#     max_models = 200,
+#     max_degree = 5,
+#     num_bfuns = 15,
+#     min_data_hard = min_data_hard,
+#     min_data_ratio = min_data_ratio,
+#     penalty = penalty,
+#     prior_shape = prior_shape,
+#     prior_scale = prior_scale
+# )
+policies["partitioned_poly_thompson_cv"] = PartitionedPolyTS(
     num_dims,
     num_acts,
     initial_steps,
@@ -148,56 +163,57 @@ policies["partitioned_poly_thompson"] = PartitionedPolyTS(
     inflation = inflation,
     max_models = 200,
     max_degree = 5,
-    num_bfuns = 15,
+    # num_bfuns = 15,
+    lasso_cv = true,
     min_data_hard = min_data_hard,
     min_data_ratio = min_data_ratio,
     penalty = penalty,
     prior_shape = prior_shape,
     prior_scale = prior_scale
 )
-policies["poly_thompson"] = PartitionedPolyTS(
-    num_dims,
-    num_acts,
-    initial_steps,
-    retrain_steps;
-    inflation = inflation,
-    max_models = 1,
-    max_degree = 5,
-    num_bfuns = 100,
-    min_data_hard = min_data_hard,
-    min_data_ratio = min_data_ratio,
-    penalty = penalty,
-    prior_shape = prior_shape,
-    prior_scale = prior_scale
-)
-policies["partitioned_linear_thompson"] = PartitionedPolyTS(
-    num_dims,
-    num_acts,
-    initial_steps,
-    retrain_steps;
-    inflation = inflation,
-    max_models = 200,
-    max_degree = 1,
-    num_bfuns = 100,
-    min_data_hard = min_data_hard,
-    min_data_ratio = min_data_ratio,
-    penalty = penalty,
-    prior_shape = prior_shape,
-    prior_scale = prior_scale
-)
-policies["neural_linear"] = NeuralLinear(
-    num_dims,
-    num_acts,
-    initial_steps,
-    retrain_steps;
-    inflation = 1.0, # Doesn't benefit from inflation
-    widths = [100, 100],
-    num_epochs = 50,
-    batch_size = 32,
-    penalty = penalty,
-    prior_shape = prior_shape,
-    prior_scale = prior_scale
-)
+# policies["poly_thompson"] = PartitionedPolyTS(
+#     num_dims,
+#     num_acts,
+#     initial_steps,
+#     retrain_steps;
+#     inflation = inflation,
+#     max_models = 1,
+#     max_degree = 5,
+#     num_bfuns = 100,
+#     min_data_hard = min_data_hard,
+#     min_data_ratio = min_data_ratio,
+#     penalty = penalty,
+#     prior_shape = prior_shape,
+#     prior_scale = prior_scale
+# )
+# policies["partitioned_linear_thompson"] = PartitionedPolyTS(
+#     num_dims,
+#     num_acts,
+#     initial_steps,
+#     retrain_steps;
+#     inflation = inflation,
+#     max_models = 200,
+#     max_degree = 1,
+#     num_bfuns = 100,
+#     min_data_hard = min_data_hard,
+#     min_data_ratio = min_data_ratio,
+#     penalty = penalty,
+#     prior_shape = prior_shape,
+#     prior_scale = prior_scale
+# )
+# policies["neural_linear"] = NeuralLinear(
+#     num_dims,
+#     num_acts,
+#     initial_steps,
+#     retrain_steps;
+#     inflation = 1.0, # Doesn't benefit from inflation
+#     widths = [100, 100],
+#     num_epochs = 50,
+#     batch_size = 32,
+#     penalty = penalty,
+#     prior_shape = prior_shape,
+#     prior_scale = prior_scale
+# )
 
 try
     mkdir("Results")
@@ -218,7 +234,6 @@ for sim = 1:num_sims
     # We only save the regrets once all policies have been tested on the same environment.
     for (pol_key, regret) in pol_regrets
         file_name = env_name * "-" * pol_key * ".csv"
-
         CSV.write("Results/" * file_name, DataFrame(regret', :auto); append = true)
     end
 end

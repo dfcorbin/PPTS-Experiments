@@ -81,19 +81,17 @@ function lasso_poly_model(
         error(mssg)
     end
 
-    if lasso_cv
-        # Lambda is chosen using cross validation over a maximum of 5 folds, each
-        # fold containing a minimum of 30 observations.
+    if lasso_cv && length(basis) > 1
         basis = basis[2:end] # Temporarily remove the intercept.
         features = legendre_expansion(inputs, basis, space)
-        sparse_coefs = @suppress GLMNet.coef(glmnetcv(
+        path = @suppress glmnet(
             features',
             targets;
             standardize = true,
             intercept = true,
-            nfolds=min(5, div(length(targets), 30))
-        ))
-        basis = basis[sparse_coefs.!=0] # Extract sparse basis.
+            lambda = [0.1]
+        )
+        basis = basis[path.betas[:, end].!=0] # Extract sparse basis.
         pushfirst!(basis, MVIndex(Int64[], Int64[])) # Re-introduce intercept.
     elseif num_bfuns == 1
         basis = basis[1:1] # Always include intercept.
