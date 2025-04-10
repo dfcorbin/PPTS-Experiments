@@ -27,7 +27,9 @@ results = DataFrame(
     :N => [],
     :Mean => [],
     :Median => [],
-    :Std => []
+    :Std => [],
+    :Lower => [],
+    :Upper => [],
 )
 
 for env_nm in env_names
@@ -46,15 +48,21 @@ for env_nm in env_names
             )
         )
         regret_sums = sum(regret_matrix; dims = 2)
-        num_sims = min(length(rnd_regret_sums), length(regret_sums), 100)
+        num_sims = min(length(rnd_regret_sums), length(regret_sums), 200)
         regret_sums = 100 * regret_sums[1:num_sims] ./ rnd_regret_sums[1:num_sims]
+        mu = mean(regret_sums)
+        sig = std(regret_sums, corrected=true)
+        upper = mu + 1.96 * sig / sqrt(num_sims) 
+        lower = mu - 1.96 * sig / sqrt(num_sims)
         new_row = Dict(
             :Environment => env_nm,
             :Policy => pol_nm,
             :N => num_sims,
-            :Mean => round(mean(regret_sums), sigdigits = 4),
+            :Mean => round(mu, sigdigits = 4), 
             :Median => round(median(regret_sums), sigdigits = 4),
-            :Std => round(std(regret_sums), sigdigits = 4)
+            :Std => round(sig, sigdigits = 4),
+            :Lower => round(lower, sigdigits = 4),
+            :Upper => round(upper, sigdigits = 4),
         )
         push!(results, new_row)
     end

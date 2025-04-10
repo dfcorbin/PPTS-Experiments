@@ -1,5 +1,6 @@
 /.vscode
 /Results
+/Results Copy
 /Data
 /.JuliaFormatter.toml
 .DS_Store

@@ -113,7 +113,7 @@ sample_wheel09_env() = WheelEnv((1.2, 1.0, 50.0), 1.0, 0.9)
 print("\n\nRunning simulations for: $(ARGS[1])...\n\n")
 
 # Define global simulation parameters.
-num_sims = 100
+num_sims = 200
 num_steps = 20000
 initial_steps = 20
 num_retrain_steps = 30
@@ -132,30 +132,15 @@ num_dims = get_num_dims(getfield(Main, Symbol("sample_$(env_name)_env"))())
 num_acts = get_num_acts(getfield(Main, Symbol("sample_$(env_name)_env"))())
 policies = Dict()
 policies["random"] = RandomPolicy(num_acts)
-# policies["neighbor_ucb"] = NeighborUCB(
-#     num_dims,
-#     num_acts,
-#     initial_steps,
-#     retrain_steps;
-#     theta = 1.0,
-#     varphi = 1.0
-# )
-# policies["partitioned_poly_thompson"] = PartitionedPolyTS(
-#     num_dims,
-#     num_acts,
-#     initial_steps,
-#     retrain_steps;
-#     inflation = inflation,
-#     max_models = 200,
-#     max_degree = 5,
-#     num_bfuns = 15,
-#     min_data_hard = min_data_hard,
-#     min_data_ratio = min_data_ratio,
-#     penalty = penalty,
-#     prior_shape = prior_shape,
-#     prior_scale = prior_scale
-# )
-policies["partitioned_poly_thompson_cv"] = PartitionedPolyTS(
+policies["neighbor_ucb"] = NeighborUCB(
+    num_dims,
+    num_acts,
+    initial_steps,
+    retrain_steps;
+    theta = 1.0,
+    varphi = 1.0
+)
+policies["partitioned_poly_thompson"] = PartitionedPolyTS(
     num_dims,
     num_acts,
     initial_steps,
@@ -163,57 +148,72 @@ policies["partitioned_poly_thompson_cv"] = PartitionedPolyTS(
     inflation = inflation,
     max_models = 200,
     max_degree = 5,
-    # num_bfuns = 15,
-    lasso_cv = true,
+    num_bfuns = 15,
     min_data_hard = min_data_hard,
     min_data_ratio = min_data_ratio,
     penalty = penalty,
     prior_shape = prior_shape,
     prior_scale = prior_scale
 )
-# policies["poly_thompson"] = PartitionedPolyTS(
-#     num_dims,
-#     num_acts,
-#     initial_steps,
-#     retrain_steps;
-#     inflation = inflation,
-#     max_models = 1,
-#     max_degree = 5,
-#     num_bfuns = 100,
-#     min_data_hard = min_data_hard,
-#     min_data_ratio = min_data_ratio,
-#     penalty = penalty,
-#     prior_shape = prior_shape,
-#     prior_scale = prior_scale
-# )
-# policies["partitioned_linear_thompson"] = PartitionedPolyTS(
+# policies["partitioned_poly_thompson_cv"] = PartitionedPolyTS(
 #     num_dims,
 #     num_acts,
 #     initial_steps,
 #     retrain_steps;
 #     inflation = inflation,
 #     max_models = 200,
-#     max_degree = 1,
-#     num_bfuns = 100,
+#     max_degree = 5,
+#     # num_bfuns = 15,
+#     lasso_cv = true,
 #     min_data_hard = min_data_hard,
 #     min_data_ratio = min_data_ratio,
 #     penalty = penalty,
 #     prior_shape = prior_shape,
 #     prior_scale = prior_scale
 # )
-# policies["neural_linear"] = NeuralLinear(
-#     num_dims,
-#     num_acts,
-#     initial_steps,
-#     retrain_steps;
-#     inflation = 1.0, # Doesn't benefit from inflation
-#     widths = [100, 100],
-#     num_epochs = 50,
-#     batch_size = 32,
-#     penalty = penalty,
-#     prior_shape = prior_shape,
-#     prior_scale = prior_scale
-# )
+policies["poly_thompson"] = PartitionedPolyTS(
+    num_dims,
+    num_acts,
+    initial_steps,
+    retrain_steps;
+    inflation = inflation,
+    max_models = 1,
+    max_degree = 5,
+    num_bfuns = 100,
+    min_data_hard = min_data_hard,
+    min_data_ratio = min_data_ratio,
+    penalty = penalty,
+    prior_shape = prior_shape,
+    prior_scale = prior_scale
+)
+policies["partitioned_linear_thompson"] = PartitionedPolyTS(
+    num_dims,
+    num_acts,
+    initial_steps,
+    retrain_steps;
+    inflation = inflation,
+    max_models = 200,
+    max_degree = 1,
+    num_bfuns = 100,
+    min_data_hard = min_data_hard,
+    min_data_ratio = min_data_ratio,
+    penalty = penalty,
+    prior_shape = prior_shape,
+    prior_scale = prior_scale
+)
+policies["neural_linear"] = NeuralLinear(
+    num_dims,
+    num_acts,
+    initial_steps,
+    retrain_steps;
+    inflation = 1.0, # Doesn't benefit from inflation
+    widths = [100, 100],
+    num_epochs = 50,
+    batch_size = 32,
+    penalty = penalty,
+    prior_shape = prior_shape,
+    prior_scale = prior_scale
+)
 
 try
     mkdir("Results")
@@ -223,17 +223,21 @@ catch
 end
 
 for sim = 1:num_sims
-    env = getfield(Main, Symbol("sample_$(env_name)_env"))() # Sample new random environment.
-    pol_regrets = Dict{String,Vector{Float64}}()
-    for pol_key in keys(policies)
-        print("\nSimulation: $sim/$num_sims | Policy: $pol_key\n")
-        pol_regrets[pol_key] =
-            run!(deepcopy(env), deepcopy(policies[pol_key]), num_steps; verbose = true)
-    end
+    try
+        env = getfield(Main, Symbol("sample_$(env_name)_env"))() # Sample new random environment.
+        pol_regrets = Dict{String,Vector{Float64}}()
+        for pol_key in keys(policies)
+            print("\nSimulation: $sim/$num_sims | Policy: $pol_key\n")
+            pol_regrets[pol_key] =
+                run!(deepcopy(env), deepcopy(policies[pol_key]), num_steps; verbose = true)
+        end
 
-    # We only save the regrets once all policies have been tested on the same environment.
-    for (pol_key, regret) in pol_regrets
-        file_name = env_name * "-" * pol_key * ".csv"
-        CSV.write("Results/" * file_name, DataFrame(regret', :auto); append = true)
+        # We only save the regrets once all policies have been tested on the same environment.
+        for (pol_key, regret) in pol_regrets
+            file_name = env_name * "-" * pol_key * ".csv"
+            CSV.write("Results/" * file_name, DataFrame(regret', :auto); append = true)
+        end
+    catch
+        print("\nSimulation: $sim/$num_sims | Error occurred. Skipping...\n")
     end
 end
